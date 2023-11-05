@@ -3,7 +3,7 @@ const LOGO_WEBP: &[u8] = include_bytes!("../assets/logo.webp");
 const BGM_OGG: &[u8] = include_bytes!("../assets/bgm.ogg");
 const INDEX_HTML: &[u8] = include_bytes!("../assets/index.html");
 
-use std::io::Write;
+use std::{io::Write, time::Duration};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader, BufStream};
 
 #[tokio::main]
@@ -32,7 +32,12 @@ where
     RW: AsyncBufRead + AsyncWrite + Unpin,
 {
     let mut buf = String::new();
-    stream.read_line(&mut buf).await?;
+
+    tokio::select! {
+        result = stream.read_line(&mut buf) => { result?; }
+        _ = tokio::time::sleep(Duration::from_secs(30)) => { return Err("".into()); }
+    }
+
     let req: Vec<&str> = buf.trim().split(' ').collect();
     if req.len() != 3 {
         return Err("".into());
