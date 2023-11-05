@@ -1,3 +1,6 @@
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 const FAVICON_ICO: &[u8] = include_bytes!("../assets/favicon.ico");
 const LOGO_WEBP: &[u8] = include_bytes!("../assets/logo.webp");
 const BGM_OGG: &[u8] = include_bytes!("../assets/bgm.ogg");
