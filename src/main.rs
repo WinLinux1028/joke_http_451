@@ -46,6 +46,7 @@ where
         return Err("".into());
     }
 
+    let write;
     if req[1] == "/favicon.ico" {
         stream
             .write_all(b"HTTP/1.1 200 Allowed by NKVD\r\n")
@@ -53,31 +54,19 @@ where
         stream
             .write_all(b"Content-Type: image/vnd.microsoft.icon\r\n")
             .await?;
-        stream
-            .write_all(format!("Content-Length: {}\r\n", FAVICON_ICO.len()).as_bytes())
-            .await?;
-        stream.write_all(b"\r\n").await?;
-        stream.write_all(FAVICON_ICO).await?;
+        write = FAVICON_ICO;
     } else if req[1] == "/logo.webp" {
         stream
             .write_all(b"HTTP/1.1 200 Allowed by NKVD\r\n")
             .await?;
         stream.write_all(b"Content-Type: image/webp\r\n").await?;
-        stream
-            .write_all(format!("Content-Length: {}\r\n", LOGO_WEBP.len()).as_bytes())
-            .await?;
-        stream.write_all(b"\r\n").await?;
-        stream.write_all(LOGO_WEBP).await?;
+        write = LOGO_WEBP;
     } else if req[1] == "/bgm.ogg" {
         stream
             .write_all(b"HTTP/1.1 200 Allowed by NKVD\r\n")
             .await?;
         stream.write_all(b"Content-Type: audio/ogg\r\n").await?;
-        stream
-            .write_all(format!("Content-Length: {}\r\n", BGM_OGG.len()).as_bytes())
-            .await?;
-        stream.write_all(b"\r\n").await?;
-        stream.write_all(BGM_OGG).await?;
+        write = BGM_OGG;
     } else {
         stream
             .write_all(b"HTTP/1.1 451 Purged by USSR Goverment\r\n")
@@ -85,12 +74,28 @@ where
         stream
             .write_all(b"Content-Type: text/html; charset=utf-8\r\n")
             .await?;
-        stream
-            .write_all(format!("Content-Length: {}\r\n", INDEX_HTML.len()).as_bytes())
-            .await?;
-        stream.write_all(b"\r\n").await?;
-        stream.write_all(INDEX_HTML).await?;
+        write = INDEX_HTML;
     }
+    stream
+        .write_all(b"Permissions-Policy: interest-cohort=()\r\n")
+        .await?;
+    stream
+        .write_all(b"X-Content-Type-Options: nosniff\r\n")
+        .await?;
+    stream.write_all(b"X-Frame-Options: DENY\r\n").await?;
+    stream
+        .write_all(b"Cross-Origin-Resource-Policy: same-origin\r\n")
+        .await?;
+    stream
+        .write_all(b"Cache-Control: public, max-age=2147483647, immutable\r\n")
+        .await?;
+    stream
+        .write_all(format!("Content-Length: {}\r\n", write.len()).as_bytes())
+        .await?;
+    stream.write_all(b"\r\n").await?;
+    stream.flush().await?;
+
+    stream.write_all(write).await?;
     stream.flush().await?;
 
     Ok(())
