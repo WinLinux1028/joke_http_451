@@ -68,6 +68,14 @@ where
         stream.write_all(b"Content-Type: audio/ogg\r\n").await?;
         write = BGM_OGG;
     } else {
+        stream.write_all(b"HTTP/1.1 103 Early Hints\r\n").await?;
+        stream
+            .write_all(b"Link: </logo.webp>; rel=preload; as=image\r\n")
+            .await?;
+        stream
+            .write_all(b"Link: </bgm.ogg>; rel=preload; as=audio\r\n")
+            .await?;
+        stream.write_all(b"\r\n").await?;
         stream
             .write_all(b"HTTP/1.1 451 Purged by USSR Goverment\r\n")
             .await?;
