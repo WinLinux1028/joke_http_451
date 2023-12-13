@@ -24,9 +24,7 @@ async fn main() {
             Err(_) => continue,
         };
 
-        tokio::spawn(async move {
-            let _ = run(&mut stream).await;
-        });
+        tokio::spawn(async move { while run(&mut stream).await.is_ok() {} });
     }
 }
 
@@ -37,7 +35,11 @@ where
     let mut buf = String::new();
 
     tokio::select! {
-        result = stream.read_line(&mut buf) => { result?; }
+        result = stream.read_line(&mut buf) => { match result {
+            Ok(0) => return Err("".into()),
+            Err(e) => return Err(e.into()),
+            Ok(_) => {}
+        } }
         _ = tokio::time::sleep(Duration::from_secs(30)) => { return Err("".into()); }
     }
 
@@ -68,7 +70,9 @@ where
         stream.write_all(b"Content-Type: audio/ogg\r\n").await?;
         write = BGM_OGG;
     } else {
-        stream.write_all(b"HTTP/1.1 103 Early Hints\r\n").await?;
+        stream
+            .write_all(b"HTTP/1.1 103 I love Hakurei Reimu!!\r\n")
+            .await?;
         stream
             .write_all(b"Link: </logo.webp>; rel=preload; as=image\r\n")
             .await?;
@@ -84,6 +88,7 @@ where
             .await?;
         write = INDEX_HTML;
     }
+    stream.write_all(b"Connection: keep-alive\r\n").await?;
     stream
         .write_all(b"Permissions-Policy: interest-cohort=()\r\n")
         .await?;
