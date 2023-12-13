@@ -48,6 +48,23 @@ where
         return Err("".into());
     }
 
+    let mut buf = String::new();
+    while buf != "\r\n" {
+        buf.clear();
+        match stream.read_line(&mut buf).await {
+            Ok(0) => return Err("".into()),
+            Err(e) => return Err(e.into()),
+            Ok(_) => {}
+        }
+        let (name, value) = match buf.split_once(':') {
+            Some(s) => s,
+            None => return Err("".into()),
+        };
+        let name = name.trim().to_lowercase();
+        let value = value.trim().to_lowercase();
+        //todo
+    }
+
     let write;
     if req[1] == "/favicon.ico" {
         stream
