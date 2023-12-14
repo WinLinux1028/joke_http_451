@@ -24,11 +24,11 @@ async fn main() {
             Err(_) => continue,
         };
 
-        tokio::spawn(async move { while run(&mut stream).await.is_ok() {} });
+        tokio::spawn(async move { while let Ok(true) = run(&mut stream).await {} });
     }
 }
 
-async fn run<RW>(stream: &mut RW) -> Result<(), Box<dyn std::error::Error>>
+async fn run<RW>(stream: &mut RW) -> Result<bool, Box<dyn std::error::Error>>
 where
     RW: AsyncBufRead + AsyncWrite + Unpin,
 {
@@ -44,25 +44,33 @@ where
     }
 
     let req: Vec<&str> = buf.trim().split(' ').collect();
-    if req.len() != 3 {
+    if req.len() != 3 || req[0] != "GET" {
         return Err("".into());
     }
 
     let mut buf = String::new();
-    while buf != "\r\n" {
+    let mut keep_alive = true;
+    loop {
         buf.clear();
         match stream.read_line(&mut buf).await {
             Ok(0) => return Err("".into()),
             Err(e) => return Err(e.into()),
             Ok(_) => {}
         }
+        if buf == "\r\n" {
+            break;
+        }
+
         let (name, value) = match buf.split_once(':') {
             Some(s) => s,
             None => return Err("".into()),
         };
         let name = name.trim().to_lowercase();
         let value = value.trim().to_lowercase();
-        //todo
+
+        if name == "connection" && value.contains("close") {
+            keep_alive = false;
+        }
     }
 
     let write;
@@ -105,7 +113,11 @@ where
             .await?;
         write = INDEX_HTML;
     }
-    stream.write_all(b"Connection: keep-alive\r\n").await?;
+    if keep_alive {
+        stream.write_all(b"Connection: keep-alive\r\n").await?;
+    } else {
+        stream.write_all(b"Connection: close\r\n").await?;
+    }
     stream
         .write_all(b"Permissions-Policy: interest-cohort=()\r\n")
         .await?;
@@ -128,5 +140,5 @@ where
     stream.write_all(write).await?;
     stream.flush().await?;
 
-    Ok(())
+    Ok(keep_alive)
 }
